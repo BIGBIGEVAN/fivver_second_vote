@@ -133,12 +133,21 @@ def get_multi_organization_line(organizations, agg_type, database_data):
         raise PreventUpdate
     database_df = pd.read_json(database_data)
     filtered_org_df = database_df.loc[database_df.org_name.isin(organizations)]
-    group_df = filtered_org_df.groupby(['org_name', 'quarter'])
-    wgm_df = group_df.apply(lambda x: weighted_geometric_mean(x)).reset_index(name='wgm')
-    wgm_df.sort_values(by=['quarter'], inplace=True)
-    multi_organization_line = px.line(wgm_df, x='quarter', y='wgm', color='org_name', markers=True)
-    multi_organization_line.update_xaxes(dtick='M3',
-                                        tickformat="Q%q\n%Y")
+    if agg_type == 'weighted geometric mean':
+        group_df = filtered_org_df.groupby(['org_name', 'quarter'])
+        wgm_df = group_df.apply(lambda x: weighted_geometric_mean(x)).reset_index(name='wgm')
+        wgm_df.sort_values(by=['quarter'], inplace=True)
+        multi_organization_line = px.line(wgm_df, x='quarter', y='wgm', color='org_name', markers=True)
+        multi_organization_line.update_xaxes(dtick='M3',
+                                            tickformat="Q%q\n%Y")
+    else:
+        filtered_org_df = filtered_org_df.loc[filtered_org_df['issue_type'] == agg_type]
+        group_df = filtered_org_df.groupby(['org_name', 'quarter']).sum().reset_index()
+        group_df.sort_values(by=['quarter'], inplace=True)
+        multi_organization_line = px.line(group_df, x='quarter', y='new_value.score', color='org_name', markers=True)
+        multi_organization_line.update_xaxes(dtick='M3',
+                                             tickformat="Q%q\n%Y")
+
     return multi_organization_line
 
 @app.callback(
